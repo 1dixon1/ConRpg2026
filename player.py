@@ -216,6 +216,8 @@ class Player:
         # Chances
         hit_chance = 0.62 + (d * 0.018) + (w * 0.006)
         evade_chance = 0.03 + (d * 0.01) + (w * 0.003)
+        if self.buffs.get("quick_step", 0) > 0:
+                evade_chance += 0.18
 
         crit_chance = 0.05 + (d * 0.004) + (ch * 0.002) + gear_crit_chance
         crit_mult = 1.50 + (s * 0.01) + gear_crit_mult

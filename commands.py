@@ -9,6 +9,21 @@ from encounter import attack_turn, run_attempt, spawn_enemy_for
 from exploration import search_location
 
 
+BOOK_TO_SKILL = {
+    "book_power_strike": "power_strike",
+    "book_guard": "guard",
+    "book_focus": "focus",
+    "book_bleed_strike": "bleed_strike",
+    "book_poison_dart": "poison_dart",
+    "book_stunning_blow": "stunning_blow",
+    "book_quick_step": "quick_step",
+    "book_sunder_armor": "sunder_armor",
+    "book_battle_cry": "battle_cry",
+    "book_first_aid": "first_aid",
+    "book_vampiric_hit": "vampiric_hit",
+    "book_execute": "execute",
+}
+
 @dataclass
 class CommandResult:
     enemy: Optional[Enemy]
@@ -42,7 +57,6 @@ def requires_map(location_key: str) -> bool:
         # Free locations (always accessible)
         return location_key not in ("tavern", "shop", "forest", "dark_forest")
 
-
 def has_map(player: Player, location_key: str) -> bool:
     map_key = f"map_{location_key}"
     return player.inventory.get(map_key, 0) > 0
@@ -60,6 +74,8 @@ def get_sell_price(item_key: str) -> int:
         return max(1, item.price // 2)
 
     return 0
+
+
 
 
 def handle_command(
@@ -350,6 +366,31 @@ def handle_command(
         player.add_log("No enemy to run from.")
         return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
 
+    if cmd in ("learn", "read"):
+        book_key = rest.strip().lower()
+        if not book_key:
+            player.add_log("Usage: learn <book_key>")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+
+        if book_key not in BOOK_TO_SKILL:
+            player.add_log("This is not a skill book.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+
+        if player.inventory.get(book_key, 0) <= 0:
+            player.add_log("You don't have that book.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+
+        skill = BOOK_TO_SKILL[book_key]
+        if skill in player.skills:
+            player.add_log("You already know that skill.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+
+        player.remove_item(book_key, 1)
+        player.skills.append(skill)
+        player.add_log(f"You learned a new skill: {skill}!")
+        return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="stats" if screen != "combat" else "combat")
+
+    
     player.add_log(f"Unknown command: {line.strip()}")
     time.sleep(0.05)
     return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)

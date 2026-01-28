@@ -7,10 +7,36 @@ from game_state import DROPS, ENEMIES, ENEMIES_BY_LOCATION, ITEMS
 
 
 SKILLS = {
-    "power_strike": {"name": "Power Strike", "mult": 1.6, "cooldown": 2},
-    "guard": {"name": "Guard", "cooldown": 3},
-    "focus": {"name": "Focus", "cooldown": 3},
+    "power_strike":   {"name": "Power Strike",   "cooldown": 2},
+    "guard":          {"name": "Guard",          "cooldown": 3},
+    "focus":          {"name": "Focus",          "cooldown": 3},
+
+    "bleed_strike":   {"name": "Bleed Strike",   "cooldown": 3},
+    "poison_dart":    {"name": "Poison Dart",    "cooldown": 3},
+    "stunning_blow":  {"name": "Stunning Blow",  "cooldown": 4},
+
+    "quick_step":     {"name": "Quick Step",     "cooldown": 3},
+    "sunder_armor":   {"name": "Sunder Armor",   "cooldown": 4},
+    "battle_cry":     {"name": "Battle Cry",     "cooldown": 4},
+
+    "first_aid":      {"name": "First Aid",      "cooldown": 5},
+    "vampiric_hit":   {"name": "Vampiric Hit",   "cooldown": 5},
+    "execute":        {"name": "Execute",        "cooldown": 6},
 }
+
+
+def apply_start_of_turn_effects(player: Player, enemy: Enemy) -> None:
+    # Bleed on enemy
+    if player.buffs.get("enemy_bleed", 0) > 0:
+        dmg = max(1, int(enemy.max_hp * 0.05))
+        enemy.hp = max(0, enemy.hp - dmg)
+        player.add_log(f"Bleed deals {dmg} damage to {enemy.name}.")
+
+    # Poison on enemy
+    if player.buffs.get("enemy_poison", 0) > 0:
+        dmg = max(1, int(enemy.max_hp * 0.04))
+        enemy.hp = max(0, enemy.hp - dmg)
+        player.add_log(f"Poison deals {dmg} damage to {enemy.name}.")
 
 
 def calc_damage(raw: float, defense: int) -> int:
@@ -59,13 +85,33 @@ def spawn_enemy_for(location: str) -> Optional[Enemy]:
         gold_reward=t["gold"],
     )
 
-
 def try_drop(player: Player) -> None:
-    for item_key, chance in DROPS:
-        if random.random() < chance:
-            player.add_item(item_key, 1)
-            player.add_log(f"Drop: {ITEMS[item_key].name}.")
+    # 25% chance: no loot at all
+    if random.random() < 0.25:
+        player.add_log("No loot dropped.")
+        return
 
+    # 75% chance: drop exactly 1 item (weighted)
+    total = sum(max(0.0, chance) for _, chance in DROPS)
+    if total <= 0.0:
+        player.add_log("No loot dropped.")
+        return
+
+    roll = random.random() * total
+    cursor = 0.0
+
+    for item_key, chance in DROPS:
+        w = max(0.0, chance)
+        cursor += w
+        if roll <= cursor:
+            if item_key in ITEMS:
+                player.add_item(item_key, 1)
+                player.add_log(f"Drop: {ITEMS[item_key].name}.")
+            else:
+                player.add_log("Drop: (unknown item).")
+            return
+
+    player.add_log("No loot dropped.")
 
 def enemy_evade_chance(enemy: Enemy) -> float:
     # Simple scaling from defense (you can extend later)
@@ -85,6 +131,14 @@ def player_hit(player: Player, enemy: Enemy, mult: float = 1.0) -> None:
     crit_chance = float(stats["crit_chance"])
     crit_mult = float(stats["crit_mult"])
 
+
+    if player.buffs.get("battle_cry", 0) > 0:
+        atk *= 1.20
+
+    enemy_def = enemy.defense
+    if player.buffs.get("enemy_sunder", 0) > 0:
+        enemy_def = max(0, enemy_def - 3)
+    
     # Hit roll vs enemy evade
     if random.random() < enemy_evade_chance(enemy):
         player.add_log(f"{enemy.name} dodged your attack!")
@@ -99,7 +153,7 @@ def player_hit(player: Player, enemy: Enemy, mult: float = 1.0) -> None:
     if is_crit:
         dmg_raw *= crit_mult
 
-    dmg = calc_damage(dmg_raw, enemy.defense)
+    dmg = calc_damage(dmg_raw, enemy_def)
     enemy.hp = max(0, enemy.hp - dmg)
 
     if is_crit:
@@ -109,6 +163,14 @@ def player_hit(player: Player, enemy: Enemy, mult: float = 1.0) -> None:
 
 
 def enemy_hit(player: Player, enemy: Enemy) -> None:
+    
+    apply_start_of_turn_effects(player, enemy)
+    if enemy.hp <= 0:
+        return
+    if player.buffs.get("enemy_stunned", 0) > 0:
+        player.add_log(f"{enemy.name} is stunned and skips the turn!")
+        return
+    
     stats = player.get_total_stats(ITEMS)
 
     player_def = int(stats["def"])
@@ -131,12 +193,17 @@ def enemy_hit(player: Player, enemy: Enemy) -> None:
 
     if "guard" in player.buffs:
         dmg = max(1, int(dmg * 0.5))
-
+    
+    if player.buffs.get("enemy_stunned", 0) > 0:
+        player.add_log(f"{enemy.name} is stunned and skips the turn!")
+        return
+    
     player.hp = max(0, player.hp - dmg)
     player.add_log(f"{enemy.name} hits you for {dmg}.")
 
     if player.hp <= 0:
         player.add_log("You died. GAME OVER.")
+        
 
 
 def end_turn_tick(player: Player) -> None:
@@ -189,35 +256,87 @@ def skill_turn(player: Player, enemy: Enemy, skill_key: str) -> Optional[Enemy]:
 
     if skill_key == "power_strike":
         player.add_log("You use Power Strike!")
-        player_hit(player, enemy, mult=SKILLS["power_strike"]["mult"])
-        player.cooldowns[skill_key] = SKILLS["power_strike"]["cooldown"]
+        player_hit(player, enemy, mult=1.55)
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
 
-        enemy = check_enemy_defeat(player, enemy)
-        if not enemy:
-            end_turn_tick(player)
-            return None
-
-        enemy_hit(player, enemy)
-        end_turn_tick(player)
-        return enemy
-
-    if skill_key == "guard":
+    elif skill_key == "guard":
         player.add_log("You use Guard! (50% damage reduction for 1 turn)")
         player.buffs["guard"] = 1
-        player.cooldowns[skill_key] = SKILLS["guard"]["cooldown"]
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
 
-        enemy_hit(player, enemy)
-        end_turn_tick(player)
-        return enemy
-
-    if skill_key == "focus":
+    elif skill_key == "focus":
         player.add_log("You use Focus! (+25% crit chance for 1 turn)")
         player.buffs["focus"] = 1
-        player.cooldowns[skill_key] = SKILLS["focus"]["cooldown"]
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
 
-        enemy_hit(player, enemy)
-        end_turn_tick(player)
+    elif skill_key == "bleed_strike":
+        player.add_log("You use Bleed Strike! (bleed for 3 turns)")
+        player_hit(player, enemy, mult=1.10)
+        player.buffs["enemy_bleed"] = 3
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
+
+    elif skill_key == "poison_dart":
+        player.add_log("You use Poison Dart! (poison for 3 turns)")
+        player_hit(player, enemy, mult=0.95)
+        player.buffs["enemy_poison"] = 3
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
+
+    elif skill_key == "stunning_blow":
+        player.add_log("You use Stunning Blow!")
+        player_hit(player, enemy, mult=1.05)
+        # 35% chance to stun for 1 turn
+        if random.random() < 0.35:
+            player.buffs["enemy_stunned"] = 1
+            player.add_log(f"{enemy.name} is stunned!")
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
+
+    elif skill_key == "quick_step":
+        player.add_log("You use Quick Step! (+evade for 2 turns)")
+        player.buffs["quick_step"] = 2
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
+
+    elif skill_key == "sunder_armor":
+        player.add_log("You use Sunder Armor! (enemy -3 DEF for 3 turns)")
+        player_hit(player, enemy, mult=1.00)
+        player.buffs["enemy_sunder"] = 3
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
+
+    elif skill_key == "battle_cry":
+        player.add_log("You use Battle Cry! (+20% ATK for 3 turns)")
+        player.buffs["battle_cry"] = 3
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
+
+    elif skill_key == "first_aid":
+        player.add_log("You use First Aid!")
+        heal = max(4, int(player.max_hp * 0.18))
+        player.hp = min(player.max_hp, player.hp + heal)
+        player.add_log(f"You recover {heal} HP.")
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
+
+    elif skill_key == "vampiric_hit":
+        player.add_log("You use Vampiric Hit!")
+        before = enemy.hp
+        player_hit(player, enemy, mult=1.20)
+        dealt = max(0, before - enemy.hp)
+        heal = max(1, int(dealt * 0.40))
+        player.hp = min(player.max_hp, player.hp + heal)
+        player.add_log(f"You drain {heal} HP.")
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
+
+    elif skill_key == "execute":
+        player.add_log("You use Execute!")
+        # Extra strong if enemy below 35% HP
+        ratio = 0.0 if enemy.max_hp <= 0 else (enemy.hp / enemy.max_hp)
+        mult = 1.25 if ratio > 0.35 else 2.10
+        player_hit(player, enemy, mult=mult)
+        player.cooldowns[skill_key] = SKILLS[skill_key]["cooldown"]
+
+    else:
+        player.add_log("Unknown skill.")
         return enemy
+
+    
+    
 
     return enemy
 
