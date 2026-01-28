@@ -38,7 +38,6 @@ def maybe_start_encounter(player: Player, enemy: Optional[Enemy]) -> Optional[En
 
     return None
 
-
 def requires_map(location_key: str) -> bool:
         # Free locations (always accessible)
         return location_key not in ("tavern", "shop", "forest", "dark_forest")
@@ -47,6 +46,21 @@ def requires_map(location_key: str) -> bool:
 def has_map(player: Player, location_key: str) -> bool:
     map_key = f"map_{location_key}"
     return player.inventory.get(map_key, 0) > 0
+
+def get_sell_price(item_key: str) -> int:
+    item = ITEMS.get(item_key)
+    if not item:
+        return 0
+
+    if getattr(item, "sell_price", 0) and item.sell_price > 0:
+        return item.sell_price
+
+    # Fallback: if item has shop price, sell for 50%
+    if getattr(item, "price", 0) and item.price > 0:
+        return max(1, item.price // 2)
+
+    return 0
+
 
 def handle_command(
     player: Player,
@@ -181,6 +195,47 @@ def handle_command(
 
         player.add_item(item_key, amount)
         player.add_log(f"Bought: {item.name} x{amount}.")
+        return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="shop")
+
+    if cmd == "sell":
+        if player.location != "shop":
+            player.add_log("You must be in the shop to sell items.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+
+        parts = rest.split()
+        if not parts:
+            player.add_log("Usage: sell <item_key> [amount]")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="shop")
+
+        item_key = parts[0].strip().lower()
+        amount = 1
+        if len(parts) >= 2 and parts[1].isdigit():
+            amount = int(parts[1])
+
+        if amount <= 0:
+            amount = 1
+
+        if item_key not in ITEMS:
+            player.add_log("Unknown item.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="shop")
+
+        have = player.inventory.get(item_key, 0)
+        if have <= 0:
+            player.add_log("You don't have that item.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="shop")
+
+        if amount > have:
+            amount = have
+
+        unit_price = get_sell_price(item_key)
+        if unit_price <= 0:
+            player.add_log("This item cannot be sold.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="shop")
+
+        player.remove_item(item_key, amount)
+        gold = unit_price * amount
+        player.gold += gold
+        player.add_log(f"Sold {ITEMS[item_key].name} x{amount} for {gold} gold.")
         return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="shop")
 
     # Items

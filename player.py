@@ -10,7 +10,8 @@ class Item:
     name: str
     desc: str
     price: int = 0
-
+    sell_price: int = 0
+    
     item_type: str = "misc"     # "consumable", "equip", "misc"
     slot: str = ""              # weapon, helmet, chest, gloves, boots, accessory
 

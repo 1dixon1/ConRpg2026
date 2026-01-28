@@ -182,7 +182,7 @@ def render_shop_page(player: Player) -> list[str]:
     for x in format_shop():
         lines.append(x)
     lines.append("")
-    lines.append("Commands: buy <number|key> [amount] | back")
+    lines.append("Commands: buy <number|key> [amount] | sell <item_key> [amount] | back")
     lines.append("")
     return lines
 

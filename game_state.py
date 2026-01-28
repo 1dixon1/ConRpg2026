@@ -282,6 +282,72 @@ ITEMS: Dict[str, Item] = {
         slot="accessory",
         hp=4,
     ),
+        # Loot / Craft materials (sell or later craft)
+    "wolf_pelt": Item(
+        key="wolf_pelt",
+        name="Wolf Pelt",
+        desc="A rough pelt. Used for crafting. Sells well.",
+        price=0,
+        sell_price=12,
+        item_type="misc",
+    ),
+    "slime_gel": Item(
+        key="slime_gel",
+        name="Slime Gel",
+        desc="Sticky gel. Used for potions and glue.",
+        price=0,
+        sell_price=6,
+        item_type="misc",
+    ),
+    "goblin_ear": Item(
+        key="goblin_ear",
+        name="Goblin Ear",
+        desc="A trophy. Merchants pay a little for it.",
+        price=0,
+        sell_price=8,
+        item_type="misc",
+    ),
+    "bone_fragment": Item(
+        key="bone_fragment",
+        name="Bone Fragment",
+        desc="Old bone. Good for crafting needles and tools.",
+        price=0,
+        sell_price=5,
+        item_type="misc",
+    ),
+    "iron_ore": Item(
+        key="iron_ore",
+        name="Iron Ore",
+        desc="Raw ore. Crafting material.",
+        price=0,
+        sell_price=10,
+        item_type="misc",
+    ),
+    "herbs": Item(
+        key="herbs",
+        name="Herbs",
+        desc="Useful for potions. Can be sold or crafted later.",
+        price=0,
+        sell_price=4,
+        item_type="misc",
+    ),
+    "ancient_coin": Item(
+        key="ancient_coin",
+        name="Ancient Coin",
+        desc="Old coin from ruins. Collectors love it.",
+        price=0,
+        sell_price=20,
+        item_type="misc",
+    ),
+    "broken_dagger": Item(
+        key="broken_dagger",
+        name="Broken Dagger",
+        desc="Junk metal. Not usable, but can be sold.",
+        price=0,
+        sell_price=7,
+        item_type="misc",
+    ),
+
 }
 
 
@@ -324,8 +390,11 @@ ENEMIES_BY_LOCATION: Dict[str, List[str]] = {
 
 # (item_key, chance 0..1)
 DROPS: List[Tuple[str, float]] = [
-    ("potion_small", 0.25),
-    ("torch", 0.10),
+    ("wolf_pelt", 0.18),
+    ("slime_gel", 0.22),
+    ("goblin_ear", 0.15),
+    ("bone_fragment", 0.25),
+    ("iron_ore", 0.10),
 ]
 
 
@@ -357,6 +426,10 @@ SEARCH_LOOT_TABLE: Dict[str, List[Tuple[str, str, int, int, float]]] = {
         ("item", "torch", 1, 1, 0.06),
         ("item", "map_crossroads", 1, 1, 0.06),
         ("item", "map_village", 1, 1, 0.04),
+        ("item", "herbs", 1, 3, 0.20),
+        ("item", "wolf_pelt", 1, 1, 0.08),
+        ("item", "iron_ore", 1, 2, 0.06),
+        ("item", "broken_dagger", 1, 1, 0.04),
     ],
     "dark_forest": [
         ("gold", "gold", 4, 16, 0.22),
@@ -364,6 +437,9 @@ SEARCH_LOOT_TABLE: Dict[str, List[Tuple[str, str, int, int, float]]] = {
         ("item", "torch", 1, 1, 0.10),
         ("item", "map_cave", 1, 1, 0.05),
         ("item", "map_ruins", 1, 1, 0.03),
+        ("item", "bone_fragment", 1, 3, 0.18),
+        ("item", "ancient_coin", 1, 1, 0.05),
+        ("item", "slime_gel", 1, 2, 0.10),
     ],
 }
 
