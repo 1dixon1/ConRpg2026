@@ -39,6 +39,15 @@ def maybe_start_encounter(player: Player, enemy: Optional[Enemy]) -> Optional[En
     return None
 
 
+def requires_map(location_key: str) -> bool:
+        # Free locations (always accessible)
+        return location_key not in ("tavern", "shop", "forest", "dark_forest")
+
+
+def has_map(player: Player, location_key: str) -> bool:
+    map_key = f"map_{location_key}"
+    return player.inventory.get(map_key, 0) > 0
+
 def handle_command(
     player: Player,
     enemy: Optional[Enemy],
@@ -92,6 +101,10 @@ def handle_command(
         if target not in LOCATIONS:
             player.add_log(f"Unknown location: {rest}")
             return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+        
+        if requires_map(target) and not has_map(player, target):
+            player.add_log(f"You need a map to enter: {target}. (Buy: map_{target})")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
 
         prev = player.location
         player.location = target
@@ -116,8 +129,15 @@ def handle_command(
             return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
 
         prev = player.location
-        player.location = exits[rest]
+        next_loc = exits[rest]
+
+        if requires_map(next_loc) and not has_map(player, next_loc):
+            player.add_log(f"You need a map to enter: {next_loc}. (Buy: map_{next_loc})")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+
+        player.location = next_loc
         player.add_log(f"Moved: {prev} -> {player.location}")
+        
         enemy = maybe_start_encounter(player, None)
 
         return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="home")
@@ -188,44 +208,69 @@ def handle_command(
         return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=new_screen)
 
     if cmd == "equip":
-        item_key = rest
-        if item_key not in ITEMS:
-            player.add_log("Unknown item.")
-            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+            item_key = rest.strip().lower()
+            item = ITEMS.get(item_key)
 
-        if player.inventory.get(item_key, 0) <= 0:
-            player.add_log("You don't have that item.")
-            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+            if not item:
+                player.add_log("Unknown item.")
+                return CommandResult(enemy, game_over, False, "inventory")
 
-        item = ITEMS[item_key]
-        if item.item_type == "weapon":
-            player.equipped_weapon = item_key
-            player.add_log(f"Equipped weapon: {item.name}.")
-            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="inventory")
+            if player.inventory.get(item_key, 0) <= 0:
+                player.add_log("You don't have that item.")
+                return CommandResult(enemy, game_over, False, "inventory")
 
-        if item.item_type == "armor":
-            player.equipped_armor = item_key
-            player.add_log(f"Equipped armor: {item.name}.")
-            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="inventory")
+            if item.item_type != "equip":
+                player.add_log("This item cannot be equipped.")
+                return CommandResult(enemy, game_over, False, "inventory")
 
-        player.add_log("You can only equip weapons or armor.")
-        return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="inventory")
+            # Accessories (2 slots)
+            if item.slot == "accessory":
+                if player.equipped["accessory1"] == item_key or player.equipped["accessory2"] == item_key:
+                    player.add_log("That accessory is already equipped.")
+                    return CommandResult(enemy, game_over, False, "inventory")
 
+                if not player.equipped["accessory1"]:
+                    player.equipped["accessory1"] = item_key
+                    player.add_log(f"Equipped accessory (slot 1): {item.name}.")
+                elif not player.equipped["accessory2"]:
+                    player.equipped["accessory2"] = item_key
+                    player.add_log(f"Equipped accessory (slot 2): {item.name}.")
+                else:
+                    player.add_log("Both accessory slots are full.")
+                    return CommandResult(enemy, game_over, False, "inventory")
+
+                player.apply_hp_bonus(ITEMS)
+                return CommandResult(enemy, game_over, False, "inventory")
+
+            # Normal slots
+            if item.slot not in player.equipped:
+                player.add_log("Invalid equipment slot.")
+                return CommandResult(enemy, game_over, False, "inventory")
+
+            player.equipped[item.slot] = item_key
+            player.add_log(f"Equipped {item.slot}: {item.name}.")
+            player.apply_hp_bonus(ITEMS)
+            return CommandResult(enemy, game_over, False, "inventory")
+
+
+        # UNEQUIP
+        
     if cmd == "unequip":
-        slot = rest.lower()
-        if slot == "weapon":
-            player.equipped_weapon = None
-            player.add_log("Weapon unequipped.")
-            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="inventory")
+        slot = rest.strip().lower()
 
-        if slot == "armor":
-            player.equipped_armor = None
-            player.add_log("Armor unequipped.")
-            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="inventory")
+        if slot not in player.equipped:
+            player.add_log("Usage: unequip <weapon|helmet|chest|gloves|boots|accessory1|accessory2>")
+            return CommandResult(enemy, game_over, False, "inventory")
 
-        player.add_log("Usage: unequip <weapon|armor>")
-        return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="inventory")
+        if not player.equipped[slot]:
+            player.add_log("That slot is already empty.")
+            return CommandResult(enemy, game_over, False, "inventory")
 
+        name = ITEMS[player.equipped[slot]].name
+        player.equipped[slot] = None
+        player.add_log(f"Unequipped {slot}: {name}.")
+        player.apply_hp_bonus(ITEMS)
+        return CommandResult(enemy, game_over, False, "inventory")
     # Combat
     if cmd == "attack":
         if enemy and enemy.is_alive():

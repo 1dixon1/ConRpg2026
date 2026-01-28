@@ -39,23 +39,31 @@ def clamp_lines(lines: list[str], max_lines: int) -> list[str]:
 
 
 def format_equipment(player: Player) -> list[str]:
-    weapon_key = player.equipped_weapon
-    armor_key = player.equipped_armor
+    order = ["weapon", "helmet", "chest", "gloves", "boots", "accessory1", "accessory2"]
+    lines: list[str] = []
 
-    if weapon_key and weapon_key in ITEMS:
-        w = ITEMS[weapon_key]
-        weapon_line = f"Weapon: {w.name}  (ATK {w.atk:+d}, DEF {w.defense:+d})  [{weapon_key}]"
-    else:
-        weapon_line = "Weapon: (none)"
+    for slot in order:
+        key = player.equipped.get(slot)
+        if key and key in ITEMS:
+            it = ITEMS[key]
+            stats = []
+            if it.atk != 0:
+                stats.append(f"ATK {it.atk:+d}")
+            if it.defense != 0:
+                stats.append(f"DEF {it.defense:+d}")
+            if it.hp != 0:
+                stats.append(f"HP {it.hp:+d}")
+            if it.crit_chance != 0.0:
+                stats.append(f"CRIT +{int(it.crit_chance * 100)}%")
+            if it.crit_mult != 0.0:
+                stats.append(f"CMULT +{it.crit_mult:.2f}")
 
-    if armor_key and armor_key in ITEMS:
-        a = ITEMS[armor_key]
-        armor_line = f"Armor : {a.name}  (ATK {a.atk:+d}, DEF {a.defense:+d})  [{armor_key}]"
-    else:
-        armor_line = "Armor : (none)"
+            stats_text = (" | " + " ".join(stats)) if stats else ""
+            lines.append(f"{slot:<10}: {it.name} [{key}]{stats_text}")
+        else:
+            lines.append(f"{slot:<10}: (none)")
 
-    return [weapon_line, armor_line]
-
+    return lines
 
 def format_inventory(player: Player) -> list[str]:
     if not player.inventory:
@@ -94,20 +102,35 @@ def format_shop() -> list[str]:
 
 
 def render_status(player: Player) -> list[str]:
-    atk = player.get_atk(ITEMS)
-    defense = player.get_def(ITEMS)
+    stats = player.get_total_stats(ITEMS)
+
+    atk = int(stats["atk"])
+    defense = int(stats["def"])
+    hit = int(stats["hit_chance"] * 100)
+    evade = int(stats["evade_chance"] * 100)
+    crit = int(stats["crit_chance"] * 100)
+    cmult = float(stats["crit_mult"])
+
+    s = int(stats["str"])
+    d = int(stats["dex"])
+    c = int(stats["con"])
+    w = int(stats["wis"])
+    i = int(stats["int"])
+    ch = int(stats["cha"])
 
     lines: list[str] = []
     lines.append("[STATUS]")
     lines.append(hr())
     lines.append(
-        f"Name: {player.name:<12}  HP: {player.hp:>2}/{player.max_hp:<2}  "
-        f"ATK: {atk:<2}  DEF: {defense:<2}  Gold: {player.gold:<4}"
+        f"HP: {player.hp:>2}/{player.max_hp:<2}  Gold: {player.gold:<4}  "
+        f"ATK: {atk:<3} DEF: {defense:<3} HIT: {hit:>2}% EVA: {evade:>2}% CRIT: {crit:>2}% x{cmult:.2f}"
     )
-    lines.append(f"Level: {player.level:<3}  XP: {player.xp:>3}/{player.xp_to_next_level():<3}  Skill Points: {player.skill_points}")
+    lines.append(
+        f"LVL: {player.level:<2} XP: {player.xp:>3}/{player.xp_to_next_level():<3} SP: {player.skill_points:<2}  "
+        f"STR {s:<2} DEX {d:<2} CON {c:<2} WIS {w:<2} INT {i:<2} CHA {ch:<2}"
+    )
     lines.append("")
     return lines
-
 
 def render_home(player: Player, enemy: Optional[Enemy]) -> list[str]:
     loc = LOCATIONS.get(player.location, {"title": "Unknown", "desc": "", "exits": {}})
@@ -130,7 +153,6 @@ def render_home(player: Player, enemy: Optional[Enemy]) -> list[str]:
     lines.append("")
     return lines
 
-
 def render_inventory_page(player: Player) -> list[str]:
     lines: list[str] = []
     lines.append("[INVENTORY]")
@@ -146,7 +168,6 @@ def render_inventory_page(player: Player) -> list[str]:
     lines.append("Commands: use <key> | equip <key> | unequip <weapon|armor> | back")
     lines.append("")
     return lines
-
 
 def render_shop_page(player: Player) -> list[str]:
     lines: list[str] = []
@@ -183,6 +204,9 @@ def render_combat_page(player: Player, enemy: Optional[Enemy]) -> list[str]:
     lines.append("")
     lines.append("Commands: attack | run | use <consumable>")
     lines.append("")
+    lines.append("Skills: " + ", ".join(player.skills))
+    lines.append("Use: skill <name>   |   skills (show cooldowns)")
+    lines.append("")
     return lines
 
 
@@ -207,6 +231,62 @@ def render_help_page() -> list[str]:
     lines.append("")
     lines.append("System:")
     lines.append("  quit")
+    lines.append("")
+    return lines
+
+def render_stats_page(player: Player) -> list[str]:
+    stats = player.get_total_stats(ITEMS)
+    attrs_total = player.get_total_attributes(ITEMS)
+
+    base = {
+        "str": player.strength,
+        "dex": player.dexterity,
+        "con": player.constitution,
+        "wis": player.wisdom,
+        "int": player.intelligence,
+        "cha": player.charisma,
+    }
+
+    bonus = {k: int(attrs_total[k]) - int(base[k]) for k in base.keys()}
+
+    def fmt_attr(label: str, key: str) -> str:
+        b = base[key]
+        t = int(attrs_total[key])
+        d = bonus[key]
+        sign = "+" if d >= 0 else ""
+        return f"{label:<4}: {b:>2} -> {t:>2}   ({sign}{d})"
+
+    atk = int(stats["atk"])
+    defense = int(stats["def"])
+    hit = int(float(stats["hit_chance"]) * 100)
+    evade = int(float(stats["evade_chance"]) * 100)
+    crit = int(float(stats["crit_chance"]) * 100)
+    cmult = float(stats["crit_mult"])
+
+    lines: list[str] = []
+    lines.append("[STATS]")
+    lines.append(hr())
+    lines.append("Attributes (base -> total, bonus from gear):")
+    lines.append(f"  {fmt_attr('STR', 'str')}     {fmt_attr('DEX', 'dex')}")
+    lines.append(f"  {fmt_attr('CON', 'con')}     {fmt_attr('WIS', 'wis')}")
+    lines.append(f"  {fmt_attr('INT', 'int')}     {fmt_attr('CHA', 'cha')}")
+    lines.append("")
+    lines.append("Derived combat:")
+    lines.append(f"  ATK  : {atk}")
+    lines.append(f"  DEF  : {defense}")
+    lines.append(f"  HIT  : {hit}%")
+    lines.append(f"  EVADE: {evade}%")
+    lines.append(f"  CRIT : {crit}%  x{cmult:.2f}")
+    lines.append("")
+    lines.append("Explanation:")
+    lines.append("  STR (Strength)      - increases damage and critical multiplier.")
+    lines.append("  DEX (Dexterity)     - increases hit chance, critical chance, and dodge chance.")
+    lines.append("  CON (Constitution)  - increases max HP and defense.")
+    lines.append("  WIS (Wisdom)        - slightly increases defense, hit chance, and dodge chance.")
+    lines.append("  INT (Intelligence)  - reserved for magic/skills scaling later (spells, mana, etc).")
+    lines.append("  CHA (Charisma)      - slightly increases crit chance (and later: prices/dialogue).")
+    lines.append("")
+    lines.append("Commands: back | inv | home")
     lines.append("")
     return lines
 
@@ -242,6 +322,9 @@ def render_frame(player: Player, enemy: Optional[Enemy], game_over: bool, screen
         out.extend(render_combat_page(player, enemy))
     elif screen == "help":
         out.extend(render_help_page())
+    elif screen == "stats":
+        out.extend(render_stats_page(player))
+
     else:
         out.extend(render_home(player, enemy))
 
@@ -252,7 +335,7 @@ def render_frame(player: Player, enemy: Optional[Enemy], game_over: bool, screen
 
     out.append("[QUICK COMMANDS]")
     out.append(hr())
-    out.append("Pages : home | inv | shop | help | quit")
+    out.append("Pages : home | inv | shop | stats | help | quit")
     out.append("Explore: goto <loc> | move <exit> | search")
     out.append("Combat : attack | run")
     out.append(hr())

@@ -26,6 +26,70 @@ LOCATIONS: Dict[str, Dict] = {
         "desc": "The air is cold. Shadows feel too close for comfort.",
         "exits": {"forest": "forest"},
     },
+    "crossroads": {
+            "title": "Crossroads",
+            "desc": "A dusty fork in the road. Signs point in many directions.",
+            "exits": {
+                "tavern": "tavern",
+                "village": "village",
+                "forest": "forest",
+            },
+        },
+        "village": {
+            "title": "Village",
+            "desc": "Small houses, a well, and quiet streets.",
+            "exits": {
+                "crossroads": "crossroads",
+                "shop": "shop",
+            },
+        },
+        "cave": {
+            "title": "Cave",
+            "desc": "Cold air and dripping water. Something moves in the dark.",
+            "exits": {
+                "forest": "forest",
+                "ruins": "ruins",
+            },
+        },
+        "ruins": {
+            "title": "Ruins",
+            "desc": "Broken stone walls. Old magic lingers here.",
+            "exits": {
+                "cave": "cave",
+                "swamp": "swamp",
+            },
+        },
+        "swamp": {
+            "title": "Swamp",
+            "desc": "Wet ground, fog, and strange sounds.",
+            "exits": {
+                "ruins": "ruins",
+                "mountains": "mountains",
+            },
+        },
+        "mountains": {
+            "title": "Mountains",
+            "desc": "Steep paths and strong winds. The view is breathtaking.",
+            "exits": {
+                "swamp": "swamp",
+                "castle_gate": "castle_gate",
+            },
+        },
+        "castle_gate": {
+            "title": "Castle Gate",
+            "desc": "A massive gate stands closed. You feel watched.",
+            "exits": {
+                "mountains": "mountains",
+                "crypt": "crypt",
+            },
+        },
+        "crypt": {
+            "title": "Crypt",
+            "desc": "A sealed underground tomb. The air is heavy.",
+            "exits": {
+                "castle_gate": "castle_gate",
+            },
+        },
 }
 
 
@@ -48,6 +112,7 @@ def normalize_location(raw: str) -> str:
 
 
 ITEMS: Dict[str, Item] = {
+    # Consumables
     "potion_small": Item(
         key="potion_small",
         name="Small Potion",
@@ -64,6 +129,64 @@ ITEMS: Dict[str, Item] = {
         item_type="consumable",
         heal=8,
     ),
+    # Maps (required to enter locations)
+    "map_village": Item(
+        key="map_village",
+        name="Map: Village",
+        desc="Grants access to the Village.",
+        price=10,
+        item_type="misc",
+    ),
+    "map_crossroads": Item(
+        key="map_crossroads",
+        name="Map: Crossroads",
+        desc="Grants access to the Crossroads.",
+        price=10,
+        item_type="misc",
+    ),
+    "map_cave": Item(
+        key="map_cave",
+        name="Map: Cave",
+        desc="Grants access to the Cave.",
+        price=18,
+        item_type="misc",
+    ),
+    "map_ruins": Item(
+        key="map_ruins",
+        name="Map: Ruins",
+        desc="Grants access to the Ruins.",
+        price=22,
+        item_type="misc",
+    ),
+    "map_swamp": Item(
+        key="map_swamp",
+        name="Map: Swamp",
+        desc="Grants access to the Swamp.",
+        price=25,
+        item_type="misc",
+    ),
+    "map_mountains": Item(
+        key="map_mountains",
+        name="Map: Mountains",
+        desc="Grants access to the Mountains.",
+        price=28,
+        item_type="misc",
+    ),
+    "map_castle_gate": Item(
+        key="map_castle_gate",
+        name="Map: Castle Gate",
+        desc="Grants access to the Castle Gate.",
+        price=35,
+        item_type="misc",
+    ),
+    "map_crypt": Item(
+        key="map_crypt",
+        name="Map: Crypt",
+        desc="Grants access to the Crypt.",
+        price=40,
+        item_type="misc",
+    ),
+
     "torch": Item(
         key="torch",
         name="Torch",
@@ -71,38 +194,93 @@ ITEMS: Dict[str, Item] = {
         price=6,
         item_type="misc",
     ),
+
+    # Weapon
     "rusty_sword": Item(
         key="rusty_sword",
         name="Rusty Sword",
         desc="Old but usable. +2 ATK.",
         price=20,
-        item_type="weapon",
+        item_type="equip",
+        slot="weapon",
         atk=2,
     ),
     "hunter_bow": Item(
         key="hunter_bow",
         name="Hunter Bow",
-        desc="Light bow for beginners. +1 ATK.",
+        desc="Light bow for beginners. +1 ATK, +3% crit.",
         price=16,
-        item_type="weapon",
+        item_type="equip",
+        slot="weapon",
         atk=1,
+        crit_chance=0.03,
     ),
-    "leather_armor": Item(
-        key="leather_armor",
+
+    # Armor pieces
+    "leather_helmet": Item(
+        key="leather_helmet",
+        name="Leather Helmet",
+        desc="Basic helmet. +1 DEF.",
+        price=14,
+        item_type="equip",
+        slot="helmet",
+        defense=1,
+    ),
+    "leather_chest": Item(
+        key="leather_chest",
         name="Leather Armor",
-        desc="Basic protection. +2 DEF.",
+        desc="Basic chest armor. +2 DEF.",
         price=22,
-        item_type="armor",
+        item_type="equip",
+        slot="chest",
         defense=2,
     ),
-    "iron_vest": Item(
-        key="iron_vest",
-        name="Iron Vest",
-        desc="Heavy vest. +4 DEF, -1 ATK.",
-        price=35,
-        item_type="armor",
-        defense=4,
-        atk=-1,
+    "leather_gloves": Item(
+        key="leather_gloves",
+        name="Leather Gloves",
+        desc="Keeps your hands safe. +1 DEF.",
+        price=12,
+        item_type="equip",
+        slot="gloves",
+        defense=1,
+    ),
+    "leather_boots": Item(
+        key="leather_boots",
+        name="Leather Boots",
+        desc="Light boots. +1 DEF.",
+        price=12,
+        item_type="equip",
+        slot="boots",
+        defense=1,
+    ),
+
+    # Accessories (2 slots)
+    "silver_ring": Item(
+        key="silver_ring",
+        name="Silver Ring",
+        desc="+5% crit chance.",
+        price=28,
+        item_type="equip",
+        slot="accessory",
+        crit_chance=0.05,
+    ),
+    "lucky_charm": Item(
+        key="lucky_charm",
+        name="Lucky Charm",
+        desc="+0.25 crit multiplier.",
+        price=30,
+        item_type="equip",
+        slot="accessory",
+        crit_mult=0.25,
+    ),
+    "health_amulet": Item(
+        key="health_amulet",
+        name="Health Amulet",
+        desc="+4 Max HP.",
+        price=26,
+        item_type="equip",
+        slot="accessory",
+        hp=4,
     ),
 }
 
@@ -113,8 +291,21 @@ SHOP_STOCK: List[str] = [
     "torch",
     "rusty_sword",
     "hunter_bow",
-    "leather_armor",
-    "iron_vest",
+    "leather_helmet",
+    "leather_chest",
+    "leather_gloves",
+    "leather_boots",
+    "silver_ring",
+    "lucky_charm",
+    "health_amulet",
+    "map_village",
+    "map_crossroads",
+    "map_cave",
+    "map_ruins",
+    "map_swamp",
+    "map_mountains",
+    "map_castle_gate",
+    "map_crypt",
 ]
 
 
@@ -164,11 +355,15 @@ SEARCH_LOOT_TABLE: Dict[str, List[Tuple[str, str, int, int, float]]] = {
         ("gold", "gold", 2, 10, 0.25),
         ("item", "potion_small", 1, 1, 0.18),
         ("item", "torch", 1, 1, 0.06),
+        ("item", "map_crossroads", 1, 1, 0.06),
+        ("item", "map_village", 1, 1, 0.04),
     ],
     "dark_forest": [
         ("gold", "gold", 4, 16, 0.22),
         ("item", "potion_big", 1, 1, 0.12),
         ("item", "torch", 1, 1, 0.10),
+        ("item", "map_cave", 1, 1, 0.05),
+        ("item", "map_ruins", 1, 1, 0.03),
     ],
 }
 
@@ -180,3 +375,5 @@ SEARCH_ENCOUNTER_CHANCE: Dict[str, float] = {
     "forest": 0.30,
     "dark_forest": 0.55,
 }
+
+

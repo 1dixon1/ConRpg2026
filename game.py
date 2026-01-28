@@ -25,6 +25,7 @@ class Game:
         player.gold = 35
         player.add_item("potion_small", 1)
         player.add_item("rusty_sword", 1)
+        player.add_item("map_crossroads", 1)
 
         return cls(player=player, screen="home")
 
