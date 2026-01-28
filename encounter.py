@@ -30,7 +30,22 @@ def spawn_enemy_for(location: str) -> Optional[Enemy]:
     if location == "dark_forest":
         if random.random() > 0.70:
             return None
-
+        
+    if location == "dark_forest":
+        if random.random() < 0.05:
+            key = random.choice(["ogre", "necromancer"])
+            t = ENEMIES[key]
+            return Enemy(
+                key=key,
+                name=t["name"],
+                max_hp=t["hp"],
+                hp=t["hp"],
+                atk=t["atk"],
+                defense=t["def"],
+                xp_reward=t["xp"],
+                gold_reward=t["gold"],
+            )
+        
     key = random.choice(pool)
     t = ENEMIES[key]
     return Enemy(

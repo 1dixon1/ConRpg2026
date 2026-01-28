@@ -97,7 +97,9 @@ class Player:
         return True
 
     def xp_to_next_level(self) -> int:
-        return 100 + (self.level - 1) * 50
+        lvl = self.level
+        return 140 + (lvl * lvl * 20) + (lvl * 40)
+
 
     def add_xp(self, amount: int) -> None:
         self.xp += max(0, amount)
@@ -107,9 +109,10 @@ class Player:
             self.xp -= self.xp_to_next_level()
             self.level += 1
             self.skill_points += 1
-            self.max_hp += 2
+            self.max_hp += 1
             self.hp = self.max_hp
-            self.add_log(f"Level up! You are now level {self.level}. (+1 skill point, max HP increased)")
+            self.add_log(f"Level up! You are now level {self.level}. (+1 skill point, +1 max HP)")
+
 
     def add_gold(self, amount: int) -> None:
         self.gold += amount
@@ -206,11 +209,12 @@ class Player:
             gear_crit_mult += it.crit_mult
 
         # Derived combat stats from attributes
-        atk = flat_atk + (s * 1.0) + (d * 0.25)
-        defense = flat_def + (c * 0.8) + (w * 0.2)
+        atk = flat_atk + (s * 0.55) + (d * 0.15)
+        defense = flat_def + (c * 0.70) + (w * 0.25)
+
 
         # Chances
-        hit_chance = 0.70 + (d * 0.02) + (w * 0.005)
+        hit_chance = 0.62 + (d * 0.018) + (w * 0.006)
         evade_chance = 0.03 + (d * 0.01) + (w * 0.003)
 
         crit_chance = 0.05 + (d * 0.004) + (ch * 0.002) + gear_crit_chance
