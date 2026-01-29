@@ -66,6 +66,7 @@ def search_location(player: Player, enemy: Optional[Enemy]) -> Optional[Enemy]:
             if kind == "item":
                 if key in ITEMS:
                     player.add_item(key, amount)
+                    player.q_loot[key] = player.q_loot.get(key, 0) + amount
                     name = ITEMS[key].name
                     if amount == 1:
                         player.add_log(f"You found: {name}.")
@@ -75,9 +76,6 @@ def search_location(player: Player, enemy: Optional[Enemy]) -> Optional[Enemy]:
 
                 player.add_log("You found something strange, but it crumbled to dust.")
                 return None
-
-    player.add_log("You found nothing.")
-    return None
 
     # Nothing found
     player.add_log("You found nothing.")

@@ -390,7 +390,73 @@ def handle_command(
         player.add_log(f"You learned a new skill: {skill}!")
         return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="stats" if screen != "combat" else "combat")
 
-    
+    if cmd in ("journal", "quests"):
+        return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="journal")
+
+    if cmd == "track":
+        qid = rest.strip().lower()
+        if not qid:
+            player.add_log("Usage: track <quest_id>")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+        if qid not in player.active_quests:
+            player.add_log("That quest is not active.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+        player.tracked_quest = qid
+        player.add_log(f"Tracked quest: {qid}")
+        return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="journal")
+
+    if cmd == "claim":
+        from quests import ALL_QUESTS
+        qid = rest.strip().lower()
+        if not qid:
+            player.add_log("Usage: claim <quest_id>")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+
+        if qid not in player.active_quests:
+            player.add_log("That quest is not active.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+
+        q = ALL_QUESTS.get(qid)
+        if not q:
+            player.add_log("Unknown quest.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)
+
+        # We need access to Game._quest_done; simplest: replicate a small check here
+        done = True
+        for kind, key, need in q.requirements:
+            if kind == "visit" and player.q_visit.get(key, 0) < need:
+                done = False
+            if kind == "kill" and player.q_kill.get(key, 0) < need:
+                done = False
+            if kind == "kill_loc" and player.q_kill_loc.get(key, 0) < need:
+                done = False
+            if kind == "loot" and player.q_loot.get(key, 0) < need:
+                done = False
+
+        if not done:
+            player.add_log("Quest is not completed yet.")
+            return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="journal")
+
+        # Reward
+        if q.reward_gold > 0:
+            player.gold += q.reward_gold
+            player.add_log(f"Quest reward: {q.reward_gold} gold.")
+        if q.reward_xp > 0:
+            player.add_xp(q.reward_xp)
+
+        for item_key, amount in q.reward_items:
+            player.add_item(item_key, amount)
+            player.add_log(f"Quest reward: {item_key} x{amount}.")
+
+        player.complete_quest(qid)
+
+        # Auto-add next main quest
+        if q.category == "main" and q.next_main_qid:
+            player.add_quest(q.next_main_qid)
+
+        return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen="journal")
+
+
     player.add_log(f"Unknown command: {line.strip()}")
     time.sleep(0.05)
     return CommandResult(enemy=enemy, game_over=game_over, should_quit=False, screen=screen)

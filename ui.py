@@ -290,6 +290,90 @@ def render_stats_page(player: Player) -> list[str]:
     lines.append("")
     return lines
 
+def render_journal_page(player: Player) -> list[str]:
+    from quests import ALL_QUESTS
+
+    lines: list[str] = []
+    lines.append("[JOURNAL]")
+    lines.append(hr())
+    lines.append(f"Tracked: {player.tracked_quest if player.tracked_quest else '(none)'}")
+    lines.append("")
+    lines.append("MAIN QUESTS:")
+    main_active = [q for q in player.active_quests if ALL_QUESTS.get(q) and ALL_QUESTS[q].category == "main"]
+    if not main_active:
+        lines.append("  (none)")
+    else:
+        for qid in main_active:
+            q = ALL_QUESTS[qid]
+            lines.extend(_format_quest_block(player, q))
+
+    lines.append("")
+    lines.append("SIDE QUESTS:")
+    side_active = [q for q in player.active_quests if ALL_QUESTS.get(q) and ALL_QUESTS[q].category == "side"]
+    if not side_active:
+        lines.append("  (none)")
+    else:
+        for qid in side_active:
+            q = ALL_QUESTS[qid]
+            lines.extend(_format_quest_block(player, q))
+
+    lines.append("")
+    lines.append("COMPLETED:")
+    if not player.completed_quests:
+        lines.append("  (none)")
+    else:
+        shown = player.completed_quests[-10:]
+        for qid in shown:
+            q = ALL_QUESTS.get(qid)
+            if q:
+                lines.append(f"  ✓ {qid} - {q.title}")
+
+    lines.append("")
+    lines.append("Commands: claim <id> | track <id> | back | home")
+    lines.append("")
+    return lines
+
+
+def _format_quest_block(player: Player, q) -> list[str]:
+    # local done check
+    done = True
+    prog_lines: list[str] = []
+    for kind, key, need in q.requirements:
+        got = 0
+        if kind == "visit":
+            got = player.q_visit.get(key, 0)
+            label = f"visit {key}"
+        elif kind == "kill":
+            got = player.q_kill.get(key, 0)
+            label = f"kill {key}"
+        elif kind == "kill_loc":
+            got = player.q_kill_loc.get(key, 0)
+            label = f"kill in {key}"
+        elif kind == "loot":
+            got = player.q_loot.get(key, 0)
+            label = f"loot {key}"
+        else:
+            label = f"{kind} {key}"
+
+        if got < need:
+            done = False
+        prog_lines.append(f"     - {label}: {got}/{need}")
+
+    header = f"  {'★' if q.category == 'main' else '•'} {q.qid} - {q.title}"
+    status = "READY (claim)" if done else "IN PROGRESS"
+    out = [header, f"     {status}", f"     {q.desc}"]
+    out.extend(prog_lines)
+    if q.reward_gold or q.reward_xp or q.reward_items:
+        rew = []
+        if q.reward_gold:
+            rew.append(f"{q.reward_gold}g")
+        if q.reward_xp:
+            rew.append(f"{q.reward_xp}xp")
+        for k, a in q.reward_items:
+            rew.append(f"{k}x{a}")
+        out.append(f"     Reward: " + ", ".join(rew))
+    return out
+
 
 def render_frame(player: Player, enemy: Optional[Enemy], game_over: bool, screen: str) -> str:
     out: list[str] = []
@@ -324,6 +408,8 @@ def render_frame(player: Player, enemy: Optional[Enemy], game_over: bool, screen
         out.extend(render_help_page())
     elif screen == "stats":
         out.extend(render_stats_page(player))
+    elif screen == "journal":
+        out.extend(render_journal_page(player))
 
     else:
         out.extend(render_home(player, enemy))

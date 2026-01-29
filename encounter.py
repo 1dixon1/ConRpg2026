@@ -215,6 +215,11 @@ def check_enemy_defeat(player: Player, enemy: Enemy) -> Optional[Enemy]:
         return enemy
 
     player.add_log(f"You defeated {enemy.name}!")
+    
+    # Quest progress: kill enemy + kill in location
+    player.q_kill[enemy.key] = player.q_kill.get(enemy.key, 0) + 1
+    player.q_kill_loc[player.location] = player.q_kill_loc.get(player.location, 0) + 1
+
     player.add_xp(enemy.xp_reward)
     player.add_gold(enemy.gold_reward)
     try_drop(player)
@@ -334,9 +339,6 @@ def skill_turn(player: Player, enemy: Enemy, skill_key: str) -> Optional[Enemy]:
     else:
         player.add_log("Unknown skill.")
         return enemy
-
-    
-    
 
     return enemy
 

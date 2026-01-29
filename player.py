@@ -72,6 +72,17 @@ class Player:
     buffs: Dict[str, int] = field(default_factory=dict)
 
     log: List[str] = field(default_factory=lambda: ["Welcome! Type: goto forest"])
+    
+    active_quests: List[str] = field(default_factory=list)
+    completed_quests: List[str] = field(default_factory=list)
+    tracked_quest: str = ""
+
+    # Quest progress counters
+    q_visit: Dict[str, int] = field(default_factory=dict)          # location -> count
+    q_kill: Dict[str, int] = field(default_factory=dict)           # enemy_key -> count
+    q_kill_loc: Dict[str, int] = field(default_factory=dict)       # location -> count
+    q_loot: Dict[str, int] = field(default_factory=dict)           # item_key -> count
+
 
     def add_log(self, message: str) -> None:
         self.log.append(message)
@@ -264,3 +275,20 @@ class Player:
             ratio = 0.0 if self.max_hp == 0 else (self.hp / self.max_hp)
             self.max_hp = new_max
             self.hp = max(1, min(self.max_hp, int(round(self.max_hp * ratio))))
+
+    def add_quest(self, qid: str) -> None:
+        if qid in self.completed_quests or qid in self.active_quests:
+            return
+        self.active_quests.append(qid)
+        if not self.tracked_quest:
+            self.tracked_quest = qid
+        self.add_log(f"New quest added: {qid}")
+
+    def complete_quest(self, qid: str) -> None:
+        if qid in self.active_quests:
+            self.active_quests.remove(qid)
+        if qid not in self.completed_quests:
+            self.completed_quests.append(qid)
+        if self.tracked_quest == qid:
+            self.tracked_quest = self.active_quests[0] if self.active_quests else ""
+        self.add_log(f"Quest completed: {qid}")
