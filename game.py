@@ -6,8 +6,6 @@ from typing import Optional
 
 from domain.player import Player
 from domain.enemy import Enemy
-from domain.item import Item
-from domain import Quest
 from commands import CommandResult, handle_command
 
 
@@ -19,6 +17,10 @@ class Game:
     should_quit: bool = False
     screen: str = "home"
 
+    # (задел под диалоги, пока не используется)
+    dialog_npc: Optional[str] = None
+    dialog_node: Optional[str] = None
+
     @classmethod
     def new(cls) -> "Game":
         random.seed()
@@ -28,12 +30,22 @@ class Game:
         player.add_item("potion_small", 1)
         player.add_item("rusty_sword", 1)
         player.add_item("map_crossroads", 1)
-        
 
-        return cls(player=player, screen="home")
+        game = cls(player=player, screen="home")
+
+        # ✅ стартовая инициализация ОДИН раз
+        from domain import get_main_chain_start
+        game.player.add_quest(get_main_chain_start())
+        game.player.add_log("Type 'journal' to open your quest diary.")
+
+        # Засчитываем стартовую локацию как посещённую
+        game.player.q_visit[game.player.location] = game.player.q_visit.get(game.player.location, 0) + 1
+
+        return game
 
     def step(self, line: str) -> CommandResult:
         prev_location = self.player.location
+
         result = handle_command(self.player, self.enemy, self.game_over, self.screen, line)
 
         self.enemy = result.enemy
@@ -41,14 +53,12 @@ class Game:
         self.should_quit = result.should_quit
         self.screen = result.screen or self.screen
 
-        from domain import get_main_chain_start
-        self.player.add_quest(get_main_chain_start())
-        self.player.add_log("Type 'journal' to open your quest diary.")
-        
+        # ✅ visit progress только при смене локации
         if self.player.location != prev_location:
             self.player.q_visit[self.player.location] = (
                 self.player.q_visit.get(self.player.location, 0) + 1
             )
+            self._check_quests()
 
         # Force combat screen if enemy is alive
         if (not self.game_over) and self.enemy and self.enemy.is_alive():
@@ -64,10 +74,6 @@ class Game:
 
         return result
 
-    def on_visit_location(self, location_key: str) -> None:
-        self.player.q_visit[location_key] = self.player.q_visit.get(location_key, 0) + 1
-        self._check_quests()
-
     def on_kill_enemy(self, enemy_key: str, location_key: str) -> None:
         self.player.q_kill[enemy_key] = self.player.q_kill.get(enemy_key, 0) + 1
         self.player.q_kill_loc[location_key] = self.player.q_kill_loc.get(location_key, 0) + 1
@@ -78,10 +84,11 @@ class Game:
         self._check_quests()
 
     def _check_quests(self) -> None:
+        # ✅ единый источник квестов
+        from domain import  quest_done
         from data import ALL_QUESTS
 
-        # Auto-add side quests based on simple milestones
-        # (пример: после 2 уровня выдать 1–2 сайда)
+        # Auto-add side quests based on milestones
         if self.player.level >= 2 and "sq_001" not in self.player.active_quests and "sq_001" not in self.player.completed_quests:
             self.player.add_quest("sq_001")
         if self.player.level >= 3 and "sq_002" not in self.player.active_quests and "sq_002" not in self.player.completed_quests:
@@ -91,28 +98,89 @@ class Game:
         if self.player.level >= 5 and "sq_004" not in self.player.active_quests and "sq_004" not in self.player.completed_quests:
             self.player.add_quest("sq_004")
 
-        # Mark quests as ready to claim (we won't auto-claim)
+        # Mark quests as ready to claim (UI will show READY)
         for qid in list(self.player.active_quests):
             q = ALL_QUESTS.get(qid)
             if not q:
                 continue
-            if self._quest_done(q):
-                # Keep active, but UI will show READY
+            if quest_done(self.player, q):
                 pass
 
-    def _quest_done(self, q) -> bool:
-        p = self.player
-        for kind, key, need in q.requirements:
-            if kind == "visit":
-                if p.q_visit.get(key, 0) < need:
-                    return False
-            elif kind == "kill":
-                if p.q_kill.get(key, 0) < need:
-                    return False
-            elif kind == "kill_loc":
-                if p.q_kill_loc.get(key, 0) < need:
-                    return False
-            elif kind == "loot":
-                if p.q_loot.get(key, 0) < need:
-                    return False
-        return True
+    def start_dialog(self, npc_id: str) -> None:
+        from data.npcs import NPCS
+
+        npc = NPCS.get(npc_id)
+        if not npc:
+            self.player.add_log("No such NPC.")
+            return
+
+        if npc.get("location") != self.player.location:
+            self.player.add_log("That NPC is not here.")
+            return
+
+        self.dialog_npc = npc_id
+        self.dialog_node = npc.get("start", "start")
+        self.player.add_log("Dialog started. Use: choose <number>")
+
+        self.screen = "dialog"
+
+    def end_dialog(self) -> None:
+        self.dialog_npc = None
+        self.dialog_node = None
+        self.screen = "home"
+
+    def dialog_choose(self, index: int) -> None:
+        from data.npcs import get_node, npc_name
+        from data import ALL_QUESTS
+
+        if not self.dialog_npc or not self.dialog_node:
+            self.player.add_log("No dialog active.")
+            self.screen = "home"
+            return
+
+        node = get_node(self.dialog_npc, self.dialog_node)
+        if not node:
+            self.player.add_log("Dialog error.")
+            self.end_dialog()
+            return
+
+        choices = node.get("choices", [])
+        if index < 1 or index > len(choices):
+            self.player.add_log("Invalid choice.")
+            return
+
+        choice = choices[index - 1]
+
+        action = choice.get("action")
+        if action:
+            atype = action.get("type")
+            if atype == "close":
+                self.player.add_log(f"You ended the conversation with {npc_name(self.dialog_npc)}.")
+                self.end_dialog()
+                return
+
+            if atype == "open_shop":
+                self.player.add_log("The merchant shows you the goods.")
+                self.screen = "shop"
+                return
+
+            if atype == "give_quest":
+                qid = action.get("qid", "")
+                if not qid or qid not in ALL_QUESTS:
+                    self.player.add_log("Quest data missing.")
+                else:
+                    if qid in self.player.completed_quests:
+                        self.player.add_log("You already completed that quest.")
+                    else:
+                        if qid in self.player.active_quests:
+                            self.player.add_log("You already have that quest.")
+                        else:
+                            self.player.add_quest(qid)
+                            self.player.add_log("Quest added to your journal.")
+
+        nxt = choice.get("next")
+        if nxt:
+            self.dialog_node = nxt
+        else:
+            # If no next, stay on current node
+            pass

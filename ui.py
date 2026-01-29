@@ -333,6 +333,39 @@ def render_journal_page(player: Player) -> list[str]:
     lines.append("")
     return lines
 
+def render_dialog_page(game) -> list[str]:
+    from data.npcs import get_node, npc_name
+
+    lines: list[str] = []
+    lines.append("[DIALOG]")
+    lines.append(hr())
+
+    if not game.dialog_npc or not game.dialog_node:
+        lines.append("No dialog active.")
+        lines.append("Type: back")
+        return lines
+
+    node = get_node(game.dialog_npc, game.dialog_node)
+    if not node:
+        lines.append("Dialog error.")
+        lines.append("Type: back")
+        return lines
+
+    lines.append(f"{npc_name(game.dialog_npc)}")
+    lines.append("")
+    lines.append(node.get("text", ""))
+    lines.append("")
+    choices = node.get("choices", [])
+    if choices:
+        for i, c in enumerate(choices, start=1):
+            lines.append(f"  {i}) {c.get('label', '')}")
+        lines.append("")
+        lines.append("Command: choose <number>")
+    else:
+        lines.append("Command: back")
+
+    return lines
+
 
 def _format_quest_block(player: Player, q) -> list[str]:
     from domain import quest_done, requirement_progress

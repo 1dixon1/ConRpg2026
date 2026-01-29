@@ -6,3 +6,4 @@ from .shop import SHOP_STOCK
 from .enemies import ENEMIES, ENEMIES_BY_LOCATION
 from .loot import DROPS, OBJECTS_BY_LOCATION, SEARCH_LOOT_TABLE, SEARCH_ENCOUNTER_CHANCE
 from .quests_data import ALL_QUESTS
+from .npcs import NPCS, npcs_in_location, npc_exists, npc_name, get_node
