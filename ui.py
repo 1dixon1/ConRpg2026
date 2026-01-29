@@ -335,34 +335,20 @@ def render_journal_page(player: Player) -> list[str]:
 
 
 def _format_quest_block(player: Player, q) -> list[str]:
-    # local done check
-    done = True
-    prog_lines: list[str] = []
-    for kind, key, need in q.requirements:
-        got = 0
-        if kind == "visit":
-            got = player.q_visit.get(key, 0)
-            label = f"visit {key}"
-        elif kind == "kill":
-            got = player.q_kill.get(key, 0)
-            label = f"kill {key}"
-        elif kind == "kill_loc":
-            got = player.q_kill_loc.get(key, 0)
-            label = f"kill in {key}"
-        elif kind == "loot":
-            got = player.q_loot.get(key, 0)
-            label = f"loot {key}"
-        else:
-            label = f"{kind} {key}"
+    from quests import quest_done, requirement_progress
 
-        if got < need:
-            done = False
+    done = quest_done(player, q)
+
+    prog_lines: list[str] = []
+    for req in q.requirements:
+        label, got, need = requirement_progress(player, req)
         prog_lines.append(f"     - {label}: {got}/{need}")
 
     header = f"  {'★' if q.category == 'main' else '•'} {q.qid} - {q.title}"
     status = "READY (claim)" if done else "IN PROGRESS"
     out = [header, f"     {status}", f"     {q.desc}"]
     out.extend(prog_lines)
+
     if q.reward_gold or q.reward_xp or q.reward_items:
         rew = []
         if q.reward_gold:
@@ -371,9 +357,9 @@ def _format_quest_block(player: Player, q) -> list[str]:
             rew.append(f"{q.reward_xp}xp")
         for k, a in q.reward_items:
             rew.append(f"{k}x{a}")
-        out.append(f"     Reward: " + ", ".join(rew))
-    return out
+        out.append("     Reward: " + ", ".join(rew))
 
+    return out
 
 def render_frame(player: Player, enemy: Optional[Enemy], game_over: bool, screen: str) -> str:
     out: list[str] = []
