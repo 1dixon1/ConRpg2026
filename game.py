@@ -4,8 +4,10 @@ import random
 from dataclasses import dataclass
 from typing import Optional
 
-from domain.enemy import Enemy
 from domain.player import Player
+from domain.enemy import Enemy
+from domain.item import Item
+from domain import Quest
 from commands import CommandResult, handle_command
 
 
@@ -39,7 +41,7 @@ class Game:
         self.should_quit = result.should_quit
         self.screen = result.screen or self.screen
 
-        from quests import get_main_chain_start
+        from domain import get_main_chain_start
         self.player.add_quest(get_main_chain_start())
         self.player.add_log("Type 'journal' to open your quest diary.")
         
@@ -76,7 +78,7 @@ class Game:
         self._check_quests()
 
     def _check_quests(self) -> None:
-        from quests import ALL_QUESTS
+        from data import ALL_QUESTS
 
         # Auto-add side quests based on simple milestones
         # (пример: после 2 уровня выдать 1–2 сайда)

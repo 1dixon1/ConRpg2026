@@ -16,6 +16,7 @@ from data import (
     OBJECTS_BY_LOCATION,
     SEARCH_LOOT_TABLE,
     SEARCH_ENCOUNTER_CHANCE,
+    ALL_QUESTS,
 )
 
 __all__ = [
@@ -31,4 +32,5 @@ __all__ = [
     "OBJECTS_BY_LOCATION",
     "SEARCH_LOOT_TABLE",
     "SEARCH_ENCOUNTER_CHANCE",
+    "ALL_QUESTS",
 ]

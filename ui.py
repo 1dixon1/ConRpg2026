@@ -291,7 +291,7 @@ def render_stats_page(player: Player) -> list[str]:
     return lines
 
 def render_journal_page(player: Player) -> list[str]:
-    from quests import ALL_QUESTS
+    from data import ALL_QUESTS
 
     lines: list[str] = []
     lines.append("[JOURNAL]")
@@ -335,7 +335,7 @@ def render_journal_page(player: Player) -> list[str]:
 
 
 def _format_quest_block(player: Player, q) -> list[str]:
-    from quests import quest_done, requirement_progress
+    from domain import quest_done, requirement_progress
 
     done = quest_done(player, q)
 

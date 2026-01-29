@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Dict
 
-from domain.quest_model import Quest
+from domain.quest import Quest
 
 
-QUESTS: Dict[str, Quest] = {
+ALL_QUESTS: Dict[str, Quest] = {
     # ---------------- MAIN QUESTS ----------------
     "mq_001": Quest(
         qid="mq_001",
