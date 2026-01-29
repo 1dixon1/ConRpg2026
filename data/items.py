@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from player import Item
+from domain.player import Item
 
 
 ITEMS: Dict[str, Item] = {

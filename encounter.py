@@ -1,8 +1,8 @@
 import random
 from typing import Optional
 
-from enemy import Enemy
-from player import Player
+from domain.enemy import Enemy
+from domain.player import Player
 from game_state import DROPS, ENEMIES, ENEMIES_BY_LOCATION, ITEMS
 
 

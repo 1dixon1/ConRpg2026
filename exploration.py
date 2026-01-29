@@ -1,8 +1,8 @@
 import random
 from typing import Optional
 
-from enemy import Enemy
-from player import Player
+from domain.enemy import Enemy
+from domain.player import Player
 from encounter import spawn_enemy_for
 from game_state import ITEMS, OBJECTS_BY_LOCATION, SEARCH_ENCOUNTER_CHANCE, SEARCH_LOOT_TABLE
 

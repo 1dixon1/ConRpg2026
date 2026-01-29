@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-from player import Item
+from domain.player import Item
 
 from data import (
     LOCATIONS,

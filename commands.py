@@ -2,8 +2,8 @@ import time
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from enemy import Enemy
-from player import Player
+from domain.enemy import Enemy
+from domain.player import Player
 from game_state import ITEMS, LOCATIONS, SHOP_STOCK, normalize_location
 from encounter import attack_turn, run_attempt, spawn_enemy_for
 from exploration import search_location

@@ -4,8 +4,8 @@ import random
 from dataclasses import dataclass
 from typing import Optional
 
-from enemy import Enemy
-from player import Player
+from domain.enemy import Enemy
+from domain.player import Player
 from commands import CommandResult, handle_command
 
 
